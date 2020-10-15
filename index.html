@@ -1,0 +1,259 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+	<head>
+		<title>Skip a Stone</title>
+		<link rel="icon" href="/favicon.ico" type="image/x-icon" />
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+		<meta name="Author" content="Casey Reas &amp; Ben Fry" />
+		<meta name="Publisher" content="Processing" />
+		<meta name="Keywords" content="Processing, Processing, Interactive Media, Electronic Arts, Programming, Java, Ben Fry, Casey Reas" />
+		<meta name="Description" content="Processing is an electronic sketchbook for developing
+				ideas. It is a context for learning fundamentals of computer programming
+				within the context of the electronic arts." />
+		<meta name="Copyright" content="All contents copyright Ben Fry, Casey Reas, MIT Media Laboratory" />
+
+	    <script src="modernizr-2.6.2.touch.js" type="text/javascript"></script>
+		<link href="style.css" rel="stylesheet" type="text/css" />
+		<style>
+		canvas {
+			position:absolute;
+			top:40px;
+			left:30px;
+		}
+		</style>
+	</head>
+	<body id="Examples" onload="" >
+	<p><p style="font-size:40px">
+<div class="content">
+<div class="examples-nav"></div>
+<div class="example">
+<script type="application/processing">
+
+//// TODO:
+/*
+1. make reversing possible****** DONE
+2. make it sink if it has below a certain yv***** DONE
+3. make the stone look more like a skipping stone, stylize it too
+4. make the clouds infinitely appearing
+
+
+
+*/
+
+//global variables
+let xvalue = 0;
+let yvalue = 300;
+let sky = 0;
+let clouds = [];
+let ncloud = 5;
+let bounce = false;
+let ballx=0;
+let bally=0;
+let defaultXv=20;
+let xv = defaultXv;
+let yv = 0;
+let g  = 4;
+let t = "none";
+let sunk = false;
+let width = 1000;
+let height = 600;
+let wavelength = 50;
+let amplitude = 20;
+let defaultXTranslation = 0;
+let defaultYTranslation = 300;
+let defaultBallAlpha = 256;
+let ballAlpha = 256;
+let balls = [];
+
+
+function getRandomInt(max) {
+  return Math.floor(Math.random() * Math.floor(max));
+}
+function probability(n) {
+     return !!n && Math.random() <= n;
+}
+
+function funk(x, xtranslation, ytranslation){
+
+	if (!ytranslation){
+		let ytranslation = defaultYTranslation;
+	}
+	if (!xtranslation){
+		let xtranslation = defaultXTranslation;
+	}
+	return Math.sin(x/wavelength + xtranslation)*amplitude + ytranslation;
+}
+
+function derivative(x,xtranslation,ytranslation){
+	//current parameters mean that min = -.3, max = .3
+
+	if (!ytranslation){
+		let ytranslation = defaultYTranslation;
+	}
+	if (!xtranslation){
+		let xtranslation = defaultXTranslation;
+	}
+	return Math.cos(x/wavelength + xtranslation)*amplitude/wavelength;
+}
+//a=wavelength
+//b=xtranslation
+//c=amplitude
+//d=ytanslation
+
+
+void setup() {
+  size(width, height);
+
+//setup clouds
+//clouds is an array of "cloud object"s which
+//is really just a nested object with the format {x,y,diameter, alpha}
+for(let i=0;i<ncloud;i++){
+	clouds[i] = {x: getRandomInt(width/ncloud)+i*width/ncloud,
+							 y: getRandomInt(yvalue),
+							 d: getRandomInt(300)+100,
+							 a: getRandomInt(50)+50};
+}
+
+  frameRate(10);
+}
+
+void draw() {
+	xvalue-=.1;//the x translation of the sin function
+	sky+=.5;//the x translation for the clouds
+	if(sky>500){
+		sky=0;
+	}
+	if(ballx>width||ballx<0){
+		resetBall();
+	}
+
+	background(200,230,238);
+	noStroke();
+
+	function printCloud(cloud){
+		fill(256,256,256,cloud.a);
+		ellipse(cloud.x + sky,cloud.y,cloud.d,cloud.d);
+	}
+
+//print the clouds
+clouds.forEach(printCloud);
+
+for(let i=0;i<5000;i++){//draw the wave
+	if(probability(.5)){//alternate colors
+		fill(99,167,184,100);
+	}else{
+		fill(127,213,235,100);
+	}
+
+//logic for drawing below the wave
+	let x = getRandomInt(width);
+	let temp = funk(x, xvalue);
+	let y = getRandomInt(height-temp) + temp;
+	let w = getRandomInt(30);//random width of circles
+	ellipse(x,y,10+w,10+w);
+}
+
+fill(90,104,107);
+textSize(50);
+text("Press Space to Skip a Stone",20,50);
+//animate ball
+
+
+
+
+for(let j=0;j<balls.length;j++){
+if(balls[j].countdown>0){
+	balls[j].countdown--;
+}
+
+if(balls[j].sunk){//make the ball sink for a sec
+balls[j].bally+=10;
+balls[j].ballAlpha-=25;
+if(balls[j].bally>=height-100){//if it's sunk low enough
+	//t="spliced";
+	balls.splice(j,1);
+	continue;
+}
+
+}else{
+
+	 if(funk(balls[j].ballx+25, xvalue)<=balls[j].bally+25&&balls[j].countdown==0){//ball makes contact with wave
+		 balls[j].countdown = 10;//5 frames before it can make contact again
+
+
+
+		if(Math.abs(balls[j].yv)<25||Math.abs(balls[j].xv<3)){
+			balls[j].sunk = true;
+		}
+
+		if(!balls[j].sunk){
+		balls[j].yv = balls[j].yv*-1;
+		dx = derivative(balls[j].ballx+25,xvalue);
+		//t="Derivative: " + dx.toFixed(2) + " Y-Velocity: " + balls[j].yv.toFixed(2);
+
+
+		if(dx<0&&balls[j].xv>0){
+			balls[j].xv -=10;
+			if(balls[j].xv<0){
+				balls[j].xv=0;
+			}
+			balls[j].xv = balls[j].xv*-1;
+
+		}else if(dx>0&&balls[j].xv<0){
+
+			balls[j].xv +=10;
+			if(balls[j].xv>0){
+				balls[j].xv=0;
+			}
+
+			balls[j].xv = balls[j].xv*-1;
+		}
+	}
+}//makes contact
+
+	balls[j].yv+=g;
+	balls[j].ballx+=balls[j].xv;
+	balls[j].bally+=balls[j].yv;
+
+}
+
+	fill(90,104,107, balls[j].ballAlpha);
+	ellipse(balls[j].ballx,balls[j].bally,50,20);
+
+
+}
+
+}
+
+void keyPressed() {
+  // The variable "key" always contains the value
+  // of the most recent key pressed.
+  if (key == ' ') {
+  	if(bounce) {
+			//resetBall();
+  	} else {
+  		//bounce=true;
+			balls.push({
+				ballx: 0,
+				bally: 10+getRandomInt(100),
+				xv: getRandomInt(30)+5,
+				yv: 0,
+				ballAlpha: defaultBallAlpha,
+				sunk: false,
+				countdown: 0
+			});
+  	}
+  }
+}
+
+</script>
+<canvas width="1000" height="600"></canvas>
+</div>
+</div>
+<script src="jquery-1.11.0.min.js"></script>
+<!--<script>window.jQuery || document.write('<script src="jquery-1.9.1.min.js"><\/script>')</script>-->
+<script src="processing.js" type="text/javascript"></script>
+<script src="site.js" type="text/javascript"></script>
+</body>
+</html>
